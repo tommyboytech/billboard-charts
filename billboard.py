@@ -3,6 +3,7 @@
 import datetime
 import json
 import sys
+from urlparse import urlparse
 
 from bs4 import BeautifulSoup
 import requests
@@ -42,9 +43,11 @@ class ChartEntry:
             spotifyID. Will be an empty string if no such ID was provided.
         videoLink: The video URL of the track. Will be an empty string if no
             such URL was provided.
+        billboardArtistID: The id parsed from the url for the artist page or
+            an empty string if not found.
     """
 
-    def __init__(self, title, artist, peakPos, lastPos, weeks, rank, change, spotifyID, spotifyLink, videoLink):
+    def __init__(self, title, artist, peakPos, lastPos, weeks, rank, change, spotifyID, spotifyLink, videoLink, billboardArtistID):
         """Constructs a new ChartEntry instance with given attributes.
         """
         self.title = title
@@ -57,6 +60,7 @@ class ChartEntry:
         self.spotifyLink = spotifyLink
         self.spotifyID = spotifyID
         self.videoLink = videoLink
+        self.billboardArtistID = billboardArtistID
 
     def __repr__(self):
         """Returns a string of the form 'TITLE by ARTIST'.
@@ -200,13 +204,18 @@ class ChartData:
 
         for entrySoup in soup.find_all('article', {'class': 'chart-row'}):
             # Grab title and artist
-            basicInfoSoup = entrySoup.find('div', 'chart-row__title').contents
-            title = basicInfoSoup[1].string.strip()
+            basicInfoSoup = entrySoup.find('div', 'chart-row__title')
+            title = basicInfoSoup.find(class_='chart-row__song').string.strip()
+            artist_tag = basicInfoSoup.find(class_='chart-row__artist')
+            artist = artist_tag.string.strip()
 
-            if (basicInfoSoup[3].find('a')):
-                artist = basicInfoSoup[3].a.string.strip()
-            else:
-                artist = basicInfoSoup[3].string.strip()
+            # parse billboard artist id from link
+            billboardArtistID = ''
+            href = artist_tag.get('href')
+            if href:
+                path = urlparse(href).path
+                if path.startswith('/artist/'):
+                    billboardArtistID = path.split('/')[2]
 
             def getRowValue(rowName):
                 selector = 'div.chart-row__' + rowName + ' .chart-row__value'
@@ -256,7 +265,7 @@ class ChartData:
             self.entries.append(
                 ChartEntry(title, artist, peakPos,
                            lastPos, weeks, rank, change,
-                           spotifyID, spotifyLink, videoLink))
+                           spotifyID, spotifyLink, videoLink, billboardArtistID))
 
         # Hot Shot Debut is the top-ranked new entry, or the first "New" entry
         # we find.
