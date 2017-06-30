@@ -19,6 +19,7 @@ __email__ = "guoguo12@gmail.com"
 HEADERS = {
     'User-Agent': 'billboard.py (https://github.com/guoguo12/billboard-charts)'}
 
+IS_PY2 = sys.version_info.major == 2
 
 class ChartEntry:
     """Represents an entry (typically a single track) on a chart.
@@ -195,6 +196,8 @@ class ChartData:
             # Extract the previous date from the link.
             # eg, /charts/country-songs/2016-02-13
             self.previousDate = prevLink.get('href').split('/')[-1]
+            if IS_PY2 and not isinstance(self.previousDate, str):
+                self.previousDate = self.previousDate.encode('utf8')
 
         currentTime = soup.find('time')
         if currentTime:
